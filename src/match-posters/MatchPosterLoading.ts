@@ -5,6 +5,7 @@ import { ConsoleMatchPoster } from "./ConsoleMatchPoster";
 import { DiscordMatchEmbedPoster } from "./DiscordMatchEmbedPoster";
 import { IDotaPoster } from "./DotaPoster";
 import { IHero } from "../IHero";
+import { OpenDota } from "opendota.js";
 
 export function loadMatchPosters(): IDotaPoster[] {
     
@@ -23,8 +24,9 @@ export function loadMatchPosters(): IDotaPoster[] {
         if (!DISCORD_WEBHOOK_URL) {
             console.warn("POST_TO_DISCORD is true but the Discord Webhook URL is missing in the .env file. Discord notifications will be disabled.");
         } else {
+            const openDota = new OpenDota();
             console.log("Discord notifications are enabled");
-            matchPosters.push(new DiscordMatchEmbedPoster(DISCORD_WEBHOOK_URL, heroes));
+            matchPosters.push(new DiscordMatchEmbedPoster(DISCORD_WEBHOOK_URL, heroes, openDota));
         }
     }
 

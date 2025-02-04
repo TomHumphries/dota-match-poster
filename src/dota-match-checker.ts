@@ -61,9 +61,13 @@ async function checkMatches(): Promise<void> {
         const maxAge = new Date(Date.now() - MAX_AGE_MS);
         if (lastMatchTime.valueOf() < maxAge.valueOf()) continue;
 
-        // if a notification has already been sent for this match, skip it
-        const lastCachedMatchId = lastNotifiedPlayerMatchIds[player.id] ?? null;
-        if (lastCachedMatchId && lastMatch.match_id === lastCachedMatchId) continue;
+        if (process.env.SKIP_MATCH_ALREADY_POSTED_CHECK=='true') {
+            console.log(`SKIP_MATCH_ALREADY_POSTED_CHECK is true`);
+        } else {
+            // if a notification has already been sent for this match, skip it
+            const lastCachedMatchId = lastNotifiedPlayerMatchIds[player.id] ?? null;
+            if (lastCachedMatchId && lastMatch.match_id === lastCachedMatchId) continue
+        }
         
         
         // Save updated match history for each user in case of an early exit
@@ -93,6 +97,6 @@ checkMatches()
         process.exit(0);
     })
     .catch((error) => {
-        console.error("❌ An error occurred while checking matches:", (error as Error).message);
+        console.error("❌ An error occurred while checking matches:", error);
         process.exit(1);
     })

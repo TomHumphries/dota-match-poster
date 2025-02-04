@@ -3,6 +3,7 @@ import { IDotaPoster } from "./DotaPoster";
 import { IPlayer } from "../IPlayer";
 import { IRecentMatch } from "./IRecentMatch";
 import { IHero } from "../IHero";
+import { isRadiant, wonMatch } from "../match-logic";
 
 export class DiscordMatchPoster implements IDotaPoster {
     constructor(
@@ -25,8 +26,8 @@ export class DiscordMatchPoster implements IDotaPoster {
 
     private buildMessage(player: IPlayer, match: IRecentMatch): string {
         const hero = this.heroes[match.hero_id.toString()];
-        const isRadiant = match.player_slot <= 127;
-        const won = match.radiant_win && isRadiant || !match.radiant_win && !isRadiant;
+        const radiant = isRadiant(match.player_slot);
+        const won = wonMatch(match, radiant);
         return `🏆 **${player.profile.personaname} ${won ? "won" : "lost"} a match**  
 👤 **Hero:** ${hero.localized_name}  
 📄 **Match ID:** ${match.match_id}  

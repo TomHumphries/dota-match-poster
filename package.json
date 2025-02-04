@@ -1,6 +1,6 @@
 {
   "name": "discord-dota",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -14,7 +14,8 @@
   "dependencies": {
     "axios": "^1.7.9",
     "discord.js": "^14.17.3",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "opendota.js": "^2.0.4"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",
