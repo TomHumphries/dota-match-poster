@@ -25,7 +25,7 @@ Match information is read from [Open Dota API](https://docs.opendota.com).
 4. Enter your Discord webhook url into the `.env` file
 If you want to run it just locally to test or tweak, this step can be omitted by settings `POST_TO_DISCORD=false` in the `.env` file.  
 
-## Building
+## Building / Running
 Build the project with 
 ```
 npm run build
@@ -34,6 +34,7 @@ Run without building using
 ```
 npm run poster
 ```
+If you want the script to post about the last match, even if it has been posted about before, you can set `SKIP_MATCH_ALREADY_POSTED_CHECK=true` in the `.env` file.  
 
 ## Notes
 The base URL for images is `https://cdn.cloudflare.steamstatic.com`.  

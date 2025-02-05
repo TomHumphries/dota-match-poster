@@ -1,6 +1,5 @@
 import "./env";
 
-import axios from "axios";
 import fs from "fs";
 import path from "path";
 
@@ -8,27 +7,27 @@ import { IPlayer } from "./IPlayer";
 import { IRecentMatch } from "./match-posters/IRecentMatch";
 import { IDotaPoster } from "./match-posters/DotaPoster";
 import { loadMatchPosters } from "./match-posters/MatchPosterLoading";
+import { MatchHistoryStore } from "./MatchHistoryStore";
+import { OpenDota } from "opendota.js";
+
+const openDotaClient = new OpenDota();
 
 export const matchPosters: IDotaPoster[] = loadMatchPosters();
 
-const players: {name: string; id: number}[] = JSON.parse(fs.readFileSync(path.join(__dirname, "../players.json"), "utf8"))
+const playersFilepath = path.join(__dirname, "../players.json");
+const players: {name: string; id: number}[] = JSON.parse(fs.readFileSync(playersFilepath, "utf8"));
 
-const MATCH_HISTORY_FILE = "last_matches.json";
+const matchHistoryFilepath = path.join(__dirname, "../last_matches.json");
+const matchHistoryStore = new MatchHistoryStore(matchHistoryFilepath);
+
 const MAX_AGE_MS = 1000 * 60 * 60 * 2; // 2 hours
-
-// Load the last reported matches for each player
-let lastNotifiedPlayerMatchIds: Record<string, number> = {};
-if (fs.existsSync(MATCH_HISTORY_FILE)) {
-    lastNotifiedPlayerMatchIds = JSON.parse(fs.readFileSync(MATCH_HISTORY_FILE, "utf8"));
-}
 
 /**
  * Fetch the most recent match for a player
  */
 async function getLastMatch(playerId: string): Promise<IRecentMatch | null> {
     try {
-        const response = await axios.get<IRecentMatch[]>(`https://api.opendota.com/api/players/${playerId}/recentMatches`);
-        const matches = response.data;
+        const matches: IRecentMatch[] = await openDotaClient.getRecentMatches(Number(playerId));
         const lastMatch = matches[0];
         if (!lastMatch) return null;
 
@@ -39,15 +38,12 @@ async function getLastMatch(playerId: string): Promise<IRecentMatch | null> {
     }
 }
 
-async function getPlayerProfile(playerId: number): Promise<IPlayer> {
-    const response = await axios.get<IPlayer>(`https://api.opendota.com/api/players/${playerId}`);
-    return response.data
-}
-
 /**
  * Main function to check for new matches and post about them
  */
 async function checkMatches(): Promise<void> {
+    const lastNotifiedPlayerMatchIds = await matchHistoryStore.loadMatchHistory();
+
     for (const player of players) {
         // get the most recent match for the player
         const lastMatch = await getLastMatch(player.id.toString());
@@ -56,33 +52,34 @@ async function checkMatches(): Promise<void> {
             continue;
         }
 
-        // if the match is old (i.e. the script hasn't run for a while), skip it
-        const lastMatchTime = new Date(lastMatch.start_time * 1000);
-        const maxAge = new Date(Date.now() - MAX_AGE_MS);
-        if (lastMatchTime.valueOf() < maxAge.valueOf()) continue;
-
-        if (process.env.SKIP_MATCH_ALREADY_POSTED_CHECK=='true') {
-            console.log(`SKIP_MATCH_ALREADY_POSTED_CHECK is true`);
-        } else {
-            // if a notification has already been sent for this match, skip it
-            const lastCachedMatchId = lastNotifiedPlayerMatchIds[player.id] ?? null;
-            if (lastCachedMatchId && lastMatch.match_id === lastCachedMatchId) continue
-        }
-        
+        if (matchIsTooOld(lastMatch)) continue;
+        if (matchAlreadyPosted(player.id, lastMatch.match_id, lastNotifiedPlayerMatchIds)) continue;
         
         // Save updated match history for each user in case of an early exit
-        lastNotifiedPlayerMatchIds[player.id] = lastMatch.match_id;
-        await saveMatchHistory();
+        lastNotifiedPlayerMatchIds[player.id.toString()] = lastMatch.match_id;
+        await matchHistoryStore.saveMatchHistory(lastNotifiedPlayerMatchIds);
 
-        // load player info
-        const playerInfo = await getPlayerProfile(Number(player.id));
-
+        const playerInfo: IPlayer = await openDotaClient.getPlayer(Number(player.id));
         await sendNotifications(playerInfo, lastMatch);
     }
 }
 
-async function saveMatchHistory(): Promise<void> {
-    await fs.promises.writeFile(MATCH_HISTORY_FILE, JSON.stringify(lastNotifiedPlayerMatchIds, null, 2));
+function matchIsTooOld(match: IRecentMatch): boolean {
+    // if the match is old (i.e. the script hasn't run for a while), skip it
+    const lastMatchTime = new Date(match.start_time * 1000);
+    const maxAge = new Date(Date.now() - MAX_AGE_MS);
+    return (lastMatchTime.valueOf() < maxAge.valueOf());
+}
+
+function matchAlreadyPosted(playerId: number, matchId: number, lastNotifiedPlayerMatchIds: Record<string, number>): boolean {
+    if (process.env.SKIP_MATCH_ALREADY_POSTED_CHECK=='true') {
+        console.log(`SKIP_MATCH_ALREADY_POSTED_CHECK is true`);
+        return false;
+    } else {
+        // if a notification has already been sent for this match, skip it
+        const lastCachedMatchId = lastNotifiedPlayerMatchIds[playerId.toString()] ?? null;
+        return (matchId === lastCachedMatchId);
+    }
 }
 
 async function sendNotifications(player: IPlayer, match: IRecentMatch): Promise<void> {
