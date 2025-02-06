@@ -34,12 +34,15 @@ export class DiscordMatchEmbedPoster implements IDotaPoster {
         const radiant = isRadiant(match.player_slot);
         const won = wonMatch(match, radiant);
 
-        let icon = won ? '🥇' : '🥈';
+        const icon = won ? '🥇' : '🥈';
+
+        const matchType = match.lobby_type === 1 ? "a ranked" : "an unranked";
         
         const recentMatchLimit = 10;
         const matchLinks = recentMatches.slice(0, recentMatchLimit).map(x => `[${wonMatch(x, isRadiant(x.player_slot)) ? '🟢' : '🔴'}](https://stratz.com/matches/${x.match_id})`);
+        matchLinks.reverse();
         const embed = new EmbedBuilder()
-            .setTitle(`${icon} ${player.profile.personaname} ${won ? "won" : "lost"} a match`)
+            .setTitle(`${icon} ${player.profile.personaname} ${won ? "won" : "lost"} ${matchType} match`)
             .addFields(
                 { name: "Hero", value: hero.localized_name, inline: true },
                 { name: "Team", value: radiant ? "Radiant" : "Dire", inline: true },
