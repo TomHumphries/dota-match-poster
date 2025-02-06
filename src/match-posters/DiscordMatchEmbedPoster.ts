@@ -5,7 +5,7 @@ import { IRecentMatch } from "./IRecentMatch";
 import { IHero } from "../IHero";
 import { EmbedBuilder } from "discord.js";
 import OpenDota from "opendota.js/types/lib/OpenDota";
-import { isRadiant, wonMatch } from "../match-logic";
+import { isRadiant, isRanked, wonMatch } from "../match-logic";
 
 export class DiscordMatchEmbedPoster implements IDotaPoster {
     constructor(
@@ -36,7 +36,7 @@ export class DiscordMatchEmbedPoster implements IDotaPoster {
 
         const icon = won ? '🥇' : '🥈';
 
-        const matchType = match.lobby_type === 1 ? "a ranked" : "an unranked";
+        const matchType = isRanked(match.lobby_type) ? "a ranked" : "an unranked";
         
         const recentMatchLimit = 10;
         const matchLinks = recentMatches.slice(0, recentMatchLimit).map(x => `[${wonMatch(x, isRadiant(x.player_slot)) ? '🟢' : '🔴'}](https://stratz.com/matches/${x.match_id})`);
