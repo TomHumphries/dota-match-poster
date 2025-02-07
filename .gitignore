@@ -3,5 +3,6 @@ node_modules
 build
 
 players.json
+user-ranks.json
 last_matches.json
 example-responses
