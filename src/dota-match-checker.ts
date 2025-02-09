@@ -7,7 +7,7 @@ import { IPlayer } from "./IPlayer";
 import { IRecentMatch } from "./match-posters/IRecentMatch";
 import { IDotaPoster } from "./match-posters/DotaPoster";
 import { loadMatchPosters } from "./match-posters/MatchPosterLoading";
-import { MatchHistoryStore } from "./MatchHistoryStore";
+import { PlayerMatchHistoryStore } from "./PlayerMatchHistoryStore";
 import { OpenDota } from "opendota.js";
 
 const openDotaClient = new OpenDota();
@@ -18,7 +18,7 @@ const playersFilepath = path.join(__dirname, "../players.json");
 const players: {name: string; id: number}[] = JSON.parse(fs.readFileSync(playersFilepath, "utf8"));
 
 const matchHistoryFilepath = path.join(__dirname, "../last_matches.json");
-const matchHistoryStore = new MatchHistoryStore(matchHistoryFilepath);
+const matchHistoryStore = new PlayerMatchHistoryStore(matchHistoryFilepath);
 
 const MAX_AGE_MS = 1000 * 60 * 60 * 2; // 2 hours
 
@@ -42,7 +42,7 @@ async function getLastMatch(playerId: string): Promise<IRecentMatch | null> {
  * Main function to check for new matches and post about them
  */
 async function checkMatches(): Promise<void> {
-    const lastNotifiedPlayerMatchIds = await matchHistoryStore.loadMatchHistory();
+    const lastNotifiedPlayerMatchIds = await matchHistoryStore.loadPlayerMatchHistory();
 
     for (const player of players) {
         // get the most recent match for the player
@@ -57,7 +57,7 @@ async function checkMatches(): Promise<void> {
         
         // Save updated match history for each user in case of an early exit
         lastNotifiedPlayerMatchIds[player.id.toString()] = lastMatch.match_id;
-        await matchHistoryStore.saveMatchHistory(lastNotifiedPlayerMatchIds);
+        await matchHistoryStore.savePlayerMatchHistory(lastNotifiedPlayerMatchIds);
 
         const playerInfo: IPlayer = await openDotaClient.getPlayer(Number(player.id));
         await sendNotifications(playerInfo, lastMatch);
