@@ -1,6 +1,6 @@
 import { createCanvas, loadImage } from 'canvas';
 import { isRadiant } from '../match-logic';
-import { WardEvent } from './WardsSource';
+import { WardEvent } from './WardEvent';
 
 export class WardMapper {
     constructor(
