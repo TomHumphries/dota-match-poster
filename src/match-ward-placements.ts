@@ -1,11 +1,13 @@
 import './env'
 import path from 'path';
+import fs from 'fs';
 import axios from 'axios';
 
 import { WardMapper } from './warding/WardMapper';
 import { IdStore } from './MatchIdStore';
 import { PlayersStore } from './players/PlayersStore';
 import { WardMapPoster } from './warding/WardMapPoster';
+import { LinearTransformer } from './warding/LinearTransformer';
 
 // check for the required environment variables
 const DISCORD_WEBHOOK_ID = process.env.DISCORD_WEBHOOK_ID;
@@ -19,11 +21,17 @@ const minimapFilepath = path.join(__dirname, '../assets/minimap.jpg');
 
 const matchesWithWardMapsStore = new IdStore(path.join(__dirname, "../matches_with_ward_maps.txt"));
 const playersStore = new PlayersStore(path.join(__dirname, "../players.json"));
+
+const transformations = JSON.parse(fs.readFileSync(path.join(__dirname, '../assets/map-transformation.json'), 'utf-8'));
+const xTransformer = new LinearTransformer(transformations.x0, transformations.x1);
+const yTransformer = new LinearTransformer(transformations.y0, transformations.y1);
+const wardMapper = new WardMapper(minimapFilepath, xTransformer, yTransformer); 
+
 const wardMapPoster = new WardMapPoster(
     DISCORD_WEBHOOK_ID, 
     DISCORD_WEBHOOK_TOKEN, 
     STRATZ_API_KEY,
-    new WardMapper(minimapFilepath), 
+    wardMapper, 
     path.join(__dirname, "../ward-maps"),
 );
 
