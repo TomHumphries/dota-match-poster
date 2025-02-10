@@ -15,7 +15,7 @@ if (!DISCORD_WEBHOOK_TOKEN) throw new Error("DISCORD_WEBHOOK_TOKEN is required")
 
 const STRATZ_API_KEY = process.env.STRATZ_API_KEY;
 if (!STRATZ_API_KEY) throw new Error("STRATZ_API_KEY is required");
-const minimapFilepath = path.join(__dirname, '../assets/minimap.png');
+const minimapFilepath = path.join(__dirname, '../assets/minimap.jpg');
 
 const matchesWithWardMapsStore = new IdStore(path.join(__dirname, "../matches_with_ward_maps.txt"));
 const playersStore = new PlayersStore(path.join(__dirname, "../players.json"));
@@ -32,49 +32,47 @@ async function main() {
 
     const attemptedMatches = new Set<number>();
 
-    const recentMatchIds = await getRecentlyPlayedMatchIds(players.map(player => player.id));
-    const uniqueMatchIds = Array.from(new Set(recentMatchIds));
-
-    for (const matchId of uniqueMatchIds) {
+    for (const player of players) {
+      try {
+        const matchId = await getLastMatch(player.id);
+        if (!matchId) continue;
+  
         const alreadyReportedOn = await matchesWithWardMapsStore.hasId(matchId.toString());
         if (alreadyReportedOn || attemptedMatches.has(matchId)) continue;
-
+  
         attemptedMatches.add(matchId);
         await wardMapPoster.postWardMap(matchId);
         await matchesWithWardMapsStore.addId(matchId.toString());
+      } catch (error) {
+        console.error(`An error occurred while processing player ${player.id}:`, error);
+      }
     }
 }
 
-async function getRecentlyPlayedMatchIds(accountIds: number[], matchersPerPlayer: number = 1): Promise<number[]> {
-  if (accountIds.length === 0) return [];
+async function getLastMatch(accountId: number): Promise<number | null> {
   const query = `
-{
-  players(steamAccountIds: [${accountIds.join(', ')}]) {
-    steamAccountId
-    matches(request: {take: ${matchersPerPlayer}}) {
-      id
+  {
+    player(steamAccountId: ${accountId}) {
+      matches(request: {take: 1}) {
+        id
+      }
     }
   }
-}
-`
-  const response = await axios.post(
-    'https://api.stratz.com/graphql',
-    { query },
-    {
-    headers: {
-        Authorization: `Bearer ${STRATZ_API_KEY}`,
-        "Content-Type": "application/json",
-        "User-Agent": "STRATZ_API",
-    },
-    }
-  );
-  const matchIds = new Set<number>();
-  for (const player of response.data.data.players) {
-    for (const match of player.matches) {
-      matchIds.add(match.id);
-    }
-  }
-  return Array.from(matchIds);
+  `
+    const response = await axios.post(
+      'https://api.stratz.com/graphql',
+      { query },
+      {
+      headers: {
+          Authorization: `Bearer ${STRATZ_API_KEY}`,
+          "Content-Type": "application/json",
+          "User-Agent": "STRATZ_API",
+      },
+      }
+    );
+    const lastMatch = response.data.data.player.matches[0];
+    if (!lastMatch) return null;
+    return lastMatch.id;
 }
 
 main()
