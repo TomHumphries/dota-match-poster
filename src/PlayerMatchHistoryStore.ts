@@ -7,10 +7,18 @@ export class PlayerMatchHistoryStore {
         private filepath: string,
     ) {}
 
-    /**
-     * Load the last reported matches for each player
-     */
-    public async loadPlayerMatchHistory(): Promise<Record<string, number>> {
+    public async getLastMatchId(playerId: string): Promise<number | null> {
+        const history = await this.loadPlayerMatchHistory();
+        return history[playerId] ?? null;
+    }
+
+    public async saveLastMatchId(playerId: string, matchId: number): Promise<void> {
+        const history = await this.loadPlayerMatchHistory();
+        history[playerId] = matchId;
+        await this.savePlayerMatchHistory(history);
+    }
+
+    private async loadPlayerMatchHistory(): Promise<Record<string, number>> {
         try {
             const content = await fs.promises.readFile(this.filepath, "utf8");
             return JSON.parse(content);
@@ -22,7 +30,7 @@ export class PlayerMatchHistoryStore {
         }
     }
 
-    public async savePlayerMatchHistory(history: Record<string, number>): Promise<void> {
+    private async savePlayerMatchHistory(history: Record<string, number>): Promise<void> {
         await fs.promises.mkdir(path.dirname(this.filepath), { recursive: true });
         await fs.promises.writeFile(this.filepath, JSON.stringify(history, null, 2), "utf8");
     }
